@@ -88,6 +88,10 @@ if __name__ == '__main__':
         '-mw', '--weights', default=None, type=str,
         help='path to model weights if resuming training'
     )
+    parser.add_argument(
+        '-fb', '--freeze-backbone', dest='freeze_backbone', action='store_true',
+        help='freeze backbone'
+    )
     args = vars(parser.parse_args())
 
     # Load the data configurations
@@ -109,6 +113,8 @@ if __name__ == '__main__':
     VISUALIZE_TRANSFORMED_IMAGES = args['vis_transformed']
     OUT_DIR = set_training_dir(args['project_name'])
     COLORS = np.random.uniform(0, 1, size=(len(CLASSES), 3))
+    FREEZE_BACKBONE = args['freeze_backbone']
+    
     # Set logging file.
     set_log(OUT_DIR)
 
@@ -142,7 +148,7 @@ if __name__ == '__main__':
     start_epochs = 0
 
     create_model = create_model[args['model']]
-    model = create_model(num_classes=NUM_CLASSES)
+    model = create_model(num_classes=NUM_CLASSES, freeze_backbone=FREEZE_BACKBONE)
 
     # Load pretrained weights if path is provided.
     if args['weights'] is not None:
