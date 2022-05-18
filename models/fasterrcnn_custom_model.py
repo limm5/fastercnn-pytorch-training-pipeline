@@ -8,11 +8,12 @@ def create_model(num_classes, pretrained=True, coco_model=False, freeze_backbone
     backbone = torchvision.models.mobilenet_v3_small(pretrained=pretrained).features
     backbone.out_channels = 576
     if freeze_backbone:
-        for i, param in enumerate(backbone.parameters):
-            if i < len(backbone.parameters)-1:
-                param.requires_grad = True
-            else:
-                param.requires_grad = False
+        count = 0
+        for param in backbone.parameters():            
+                if count <3:
+                    param.requires_grad = False
+                else:
+                    break
 
     # let's make the RPN generate 5 x 3 anchors per spatial
     # location, with 5 different sizes and 3 different aspect
