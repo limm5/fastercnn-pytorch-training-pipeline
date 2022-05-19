@@ -4,6 +4,7 @@ import numpy as np
 import os
 import glob as glob
 import random
+import scipy.io as sio
 
 from xml.etree import ElementTree as et
 from torch.utils.data import Dataset, DataLoader
@@ -270,6 +271,230 @@ class CustomDataset(Dataset):
     def __len__(self):
         return len(self.all_images)
 
+class MAFATrainDataset(Dataset):
+    def __init__(
+        self, images_path, labels_path,
+        width, height, classes, transforms=None,
+        use_train_aug=False,
+        train=False
+    ):
+        self.transforms = transforms
+        self.use_train_aug = use_train_aug
+        self.images_path = images_path
+        self.labels_path = labels_path
+        self.height = height
+        self.width = width
+        self.classes = classes
+        self.train = train
+        self.image_file_types = ['*.jpg', '*.jpeg', '*.png', '*.ppm']
+        self.all_image_paths = []
+        
+        # get all the image paths in sorted order
+        for file_type in self.image_file_types:
+            self.all_image_paths.extend(glob.glob(f"{self.images_path}/{file_type}"))
+                
+        # labels
+        self.all_annots = {}
+        mat = sio.loadmat(labels_path)
+
+        temp_annots = mat['label_train'][0]
+            
+        
+        
+        for annots in temp_annots:
+            self.all_annots[annots[1][0]] = annots[2]
+        
+        self.all_images = [image_path.split(os.path.sep)[-1] for image_path in self.all_image_paths]
+        self.all_images = sorted(self.all_images)                    
+        
+    
+    def load_image_and_labels(self, idx):
+        # capture image name and full image path
+        image_name = self.all_images[idx]
+        image_path = os.path.join(self.images_path, image_name)
+        
+        # read image
+        image = cv2.imread(image_path)
+        # convert BGR to RGB color format
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32)
+        image_resized = cv2.resize(image, (self.width, self.height))
+        image_resized /= 255.0
+        
+        # get annotations
+        boxes = []
+        labels = []
+        
+        # get the height and width of the image
+        image_width = image.shape[1]
+        image_height = image.shape[0]
+        
+        for annots in self.all_annots[image_name]:
+            labels.append(annots[12])
+            
+            # xmin = left corner x-coordinates
+            xmin = int(annots[0])
+            # xmax = right corner x-coordinates
+            xmax = int(annots[0]) + int(annots[2])
+            # ymin = left corner y-coordinates
+            ymin = int(annots[1])
+            # ymax = right corner y-coordinates
+            ymax = int(annots[1]) + int(annots[3])
+            
+            # resize bounding box accordingly
+            xmin_final = (xmin/image_width)*self.width
+            xmax_final = (xmax/image_width)*self.width
+            ymin_final = (ymin/image_height)*self.height
+            yamx_final = (ymax/image_height)*self.height
+            
+            boxes.append([xmin_final, ymin_final, xmax_final, yamx_final])
+        
+        # bounding box to tensor
+        boxes = torch.as_tensor(boxes, dtype=torch.float32)
+        # area of the bounding boxes
+        area = (boxes[:, 3] - boxes[:, 1]) * (boxes[:, 2] - boxes[:, 0])
+        # labels to tensor
+        labels = torch.as_tensor(labels, dtype=torch.int64)
+
+        # prepare the final `target` dictionary
+        target = {}
+        target["boxes"] = boxes
+        target["labels"] = labels
+        target["area"] = area
+        image_id = torch.tensor([idx])
+        target["image_id"] = image_id
+        
+        # apply the image transforms
+        if self.transforms:
+            sample = self.transforms(image = image_resized,
+                                     bboxes = target['boxes'],
+                                     labels = labels)
+            image_resized = sample['image']
+            target['boxes'] = torch.Tensor(sample['bboxes'])
+            
+        return image_resized, target
+    
+    def __len__(self):
+        return len(self.all_images)
+    
+    
+    
+    def __getitem__(self, idx):
+        # capture image name and full image path
+        image, target = self.load_image_and_labels(idx)
+        
+        return image, target
+
+class MAFATestDataset(Dataset):
+    def __init__(
+        self, images_path, labels_path,
+        width, height, classes, transforms=None,
+        use_train_aug=False,
+        train=False
+    ):
+        self.transforms = transforms
+        self.use_train_aug = use_train_aug
+        self.images_path = images_path
+        self.labels_path = labels_path
+        self.height = height
+        self.width = width
+        self.classes = classes
+        self.train = train
+        self.image_file_types = ['*.jpg', '*.jpeg', '*.png', '*.ppm']
+        self.all_image_paths = []
+        
+        # get all the image paths in sorted order
+        for file_type in self.image_file_types:
+            self.all_image_paths.extend(glob.glob(f"{self.images_path}/{file_type}"))
+                
+        # labels
+        self.all_annots = {}
+        mat = sio.loadmat(labels_path)        
+        temp_annots = mat['LabelTest'][0]           
+
+                            
+        for annots in temp_annots:
+            self.all_annots[annots[0][0]] = annots[1]
+        
+        self.all_images = [image_path.split(os.path.sep)[-1] for image_path in self.all_image_paths]
+        self.all_images = sorted(self.all_images)                    
+        
+    
+    def load_image_and_labels(self, idx):
+        # capture image name and full image path
+        image_name = self.all_images[idx]
+        image_path = os.path.join(self.images_path, image_name)
+        
+        # read image
+        image = cv2.imread(image_path)
+        # convert BGR to RGB color format
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32)
+        image_resized = cv2.resize(image, (self.width, self.height))
+        image_resized /= 255.0
+        
+        # get annotations
+        boxes = []
+        labels = []
+        
+        # get the height and width of the image
+        image_width = image.shape[1]
+        image_height = image.shape[0]
+        
+        for annots in self.all_annots[image_name]:
+            labels.append(annots[9])
+            
+            # xmin = left corner x-coordinates
+            xmin = int(annots[0])
+            # xmax = right corner x-coordinates
+            xmax = int(annots[0]) + int(annots[2])
+            # ymin = left corner y-coordinates
+            ymin = int(annots[1])
+            # ymax = right corner y-coordinates
+            ymax = int(annots[1]) + int(annots[3])
+            
+            # resize bounding box accordingly
+            xmin_final = (xmin/image_width)*self.width
+            xmax_final = (xmax/image_width)*self.width
+            ymin_final = (ymin/image_height)*self.height
+            yamx_final = (ymax/image_height)*self.height
+            
+            boxes.append([xmin_final, ymin_final, xmax_final, yamx_final])
+        
+        # bounding box to tensor
+        boxes = torch.as_tensor(boxes, dtype=torch.float32)
+        # area of the bounding boxes
+        area = (boxes[:, 3] - boxes[:, 1]) * (boxes[:, 2] - boxes[:, 0])
+        # labels to tensor
+        labels = torch.as_tensor(labels, dtype=torch.int64)
+
+        # prepare the final `target` dictionary
+        target = {}
+        target["boxes"] = boxes
+        target["labels"] = labels
+        target["area"] = area
+        image_id = torch.tensor([idx])
+        target["image_id"] = image_id
+        
+        # apply the image transforms
+        if self.transforms:
+            sample = self.transforms(image = image_resized,
+                                     bboxes = target['boxes'],
+                                     labels = labels)
+            image_resized = sample['image']
+            target['boxes'] = torch.Tensor(sample['bboxes'])
+            
+        return image_resized, target
+    
+    def __len__(self):
+        return len(self.all_images)
+    
+    
+    
+    def __getitem__(self, idx):
+        # capture image name and full image path
+        image, target = self.load_image_and_labels(idx)
+        
+        return image, target                            
+
 def collate_fn(batch):
     """
     To handle the data loading as different images may have different number 
@@ -284,19 +509,19 @@ def create_train_dataset(
     use_train_aug=False,
     mosaic=True
 ):
-    train_dataset = CustomDataset(
+    train_dataset = MAFATrainDataset(
         train_dir_images, train_dir_labels,
         resize_width, resize_height, classes, 
         get_train_transform(),
         use_train_aug=use_train_aug,
-        train=True, mosaic=mosaic
+        train=True
     )
     return train_dataset
 def create_valid_dataset(
     valid_dir_images, valid_dir_labels, 
     resize_width, resize_height, classes
 ):
-    valid_dataset = CustomDataset(
+    valid_dataset = MAFATestDataset(
         valid_dir_images, valid_dir_labels, 
         resize_width, resize_height, classes, 
         get_valid_transform(),
