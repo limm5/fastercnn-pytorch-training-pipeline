@@ -53,7 +53,7 @@ class ConvertCocoPolysToMask:
 
         anno = target["annotations"]
 
-        anno = [obj for obj in anno if obj["iscrowd"] == 0]
+        # anno = [obj for obj in anno if obj["iscrowd"] == 0]
 
         boxes = [obj["bbox"] for obj in anno]
         # guard against no boxes via resizing
@@ -93,9 +93,9 @@ class ConvertCocoPolysToMask:
 
         # for conversion to coco api
         area = torch.tensor([obj["area"] for obj in anno])
-        iscrowd = torch.tensor([obj["iscrowd"] for obj in anno])
+        # iscrowd = torch.tensor([obj["iscrowd"] for obj in anno])
         target["area"] = area
-        target["iscrowd"] = iscrowd
+        # target["iscrowd"] = iscrowd
 
         return image, target
 
@@ -161,7 +161,7 @@ def convert_to_coco_api(ds):
         bboxes = bboxes.tolist()
         labels = targets["labels"].tolist()
         areas = targets["area"].tolist()
-        iscrowd = targets["iscrowd"].tolist()
+        # iscrowd = targets["iscrowd"].tolist()
         if "masks" in targets:
             masks = targets["masks"]
             # make masks Fortran contiguous for coco_mask
@@ -177,7 +177,7 @@ def convert_to_coco_api(ds):
             ann["category_id"] = labels[i]
             categories.add(labels[i])
             ann["area"] = areas[i]
-            ann["iscrowd"] = iscrowd[i]
+            # ann["iscrowd"] = iscrowd[i]
             ann["id"] = ann_id
             if "masks" in targets:
                 ann["segmentation"] = coco_mask.encode(masks[i].numpy())
