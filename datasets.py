@@ -331,16 +331,16 @@ class MAFATrainDataset(Dataset):
 
         # Box coordinates for xml files are extracted and corrected for image size given.
         for member in annots:
-            labels.append(annots[12])
+            labels.append(member[12])
 
             # xmin = left corner x-coordinates
-            xmin = int(annots[0])
+            xmin = int(member[0])
             # xmax = right corner x-coordinates
-            xmax = int(annots[0]) + int(annots[2])
+            xmax = int(member[0]) + int(member[2])
             # ymin = left corner y-coordinates
-            ymin = int(annots[1])
+            ymin = int(member[1])
             # ymax = right corner y-coordinates
-            ymax = int(annots[1]) + int(annots[3])
+            ymax = int(member[1]) + int(member[3])
 
             ymax, xmax = self.check_image_and_annotation(
                 xmax, ymax, image_width, image_height
@@ -554,13 +554,13 @@ class MAFATestDataset(Dataset):
             labels.append(member[9])
 
             # xmin = left corner x-coordinates
-            xmin = int(annots[0])
+            xmin = int(member[0])
             # xmax = right corner x-coordinates
-            xmax = int(annots[0]) + int(annots[2])
+            xmax = int(member[0]) + int(member[2])
             # ymin = left corner y-coordinates
-            ymin = int(annots[1])
+            ymin = int(member[1])
             # ymax = right corner y-coordinates
-            ymax = int(annots[1]) + int(annots[3])
+            ymax = int(member[1]) + int(member[3])
 
             ymax, xmax = self.check_image_and_annotation(
                 xmax, ymax, image_width, image_height
