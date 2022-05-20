@@ -550,17 +550,21 @@ class MAFATestDataset(Dataset):
         image_height = image.shape[0]
 
         # Box coordinates for xml files are extracted and corrected for image size given.
-        for member in annots:
-            labels.append(member[9])
-
+        for member in annots:            
             # xmin = left corner x-coordinates
             xmin = int(member[0])
+            if xmin > image_width:
+              continue
             # xmax = right corner x-coordinates
             xmax = int(member[0]) + int(member[2])
             # ymin = left corner y-coordinates
             ymin = int(member[1])
+            if ymin > image_height:
+              continue
             # ymax = right corner y-coordinates
             ymax = int(member[1]) + int(member[3])
+
+            labels.append(member[9])
 
             ymax, xmax = self.check_image_and_annotation(
                 xmax, ymax, image_width, image_height
